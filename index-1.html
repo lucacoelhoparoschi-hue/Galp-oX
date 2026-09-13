@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Galpão — Controle de estoque e pedidos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#14181f; --ink-2:#1e232c; --paper:#f1efe9; --surface:#ffffff;
+    --text:#1c1f26; --muted:#6b6f76; --line:#e0dcd1;
+    --accent:#e8a33d; --accent-ink:#5a3c0f;
+    --success:#2f7a6b; --success-bg:#e4efec;
+    --warning:#c1502e; --warning-bg:#f6e5df;
+    --info:#2d5f8a; --info-bg:#e2ebf2;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;}
+  html,body{font-family:'IBM Plex Sans', sans-serif;background:var(--paper);color:var(--text);}
+  h1,h2,h3{font-family:'Archivo', sans-serif;margin:0;letter-spacing:-0.01em;}
+  .mono{font-family:'IBM Plex Mono', monospace;}
+  button{font-family:inherit;cursor:pointer;}
+
+  /* ---------- LOGIN ---------- */
+  .login-screen{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:var(--ink);
+  }
+  .login-card{
+    background:var(--surface);
+    padding:36px;
+    border-radius:12px;
+    width:360px;max-width:90vw;
+  }
+  .login-card .mark{display:flex;align-items:center;gap:8px;font-family:'Archivo',sans-serif;font-weight:800;font-size:22px;margin-bottom:4px;}
+  .login-card .mark .dot{width:10px;height:10px;background:var(--accent);transform:rotate(45deg);}
+  .login-card p.sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:13px;color:var(--muted);margin-bottom:5px;}
+  .field input,.field select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:6px;font-size:14px;font-family:inherit;}
+  .btn{border:1px solid var(--line);background:var(--surface);padding:9px 16px;border-radius:7px;font-size:14px;font-weight:500;color:var(--text);}
+  .btn:hover{border-color:#c9c4b5;}
+  .btn-primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600;}
+  .btn-primary:hover{filter:brightness(0.96);}
+  .btn-block{width:100%;padding:11px;text-align:center;}
+  .login-error{background:var(--warning-bg);color:var(--warning);padding:8px 12px;border-radius:6px;font-size:13px;margin-bottom:14px;display:none;}
+  .login-toggle{text-align:center;margin-top:16px;font-size:13.5px;color:var(--muted);}
+  .login-toggle button{background:none;border:none;color:var(--info);text-decoration:underline;padding:0;font-size:13.5px;}
+
+  /* ---------- APP LAYOUT ---------- */
+  .app{display:none;min-height:100vh;}
+  .app.active{display:flex;}
+  .sidebar{width:230px;flex-shrink:0;background:var(--ink);color:#d8dae0;display:flex;flex-direction:column;padding:24px 0;}
+  .brand{padding:0 20px 22px 20px;border-bottom:1px solid #2a303b;margin-bottom:14px;}
+  .brand .mark{display:inline-flex;align-items:center;gap:8px;font-family:'Archivo',sans-serif;font-weight:800;font-size:20px;color:#fff;}
+  .brand .mark .dot{width:10px;height:10px;background:var(--accent);transform:rotate(45deg);flex-shrink:0;}
+  .brand .tag{display:block;font-size:12px;color:#8b90a0;margin-top:6px;}
+  .nav{padding:0 10px;display:flex;flex-direction:column;gap:2px;}
+  .nav button{text-align:left;background:transparent;border:none;color:#c3c6d1;padding:10px 12px;border-radius:6px;font-size:14.5px;font-weight:500;display:flex;align-items:center;gap:10px;}
+  .nav button .sq{width:8px;height:8px;background:#4b5160;flex-shrink:0;}
+  .nav button:hover{background:#20252f;color:#fff;}
+  .nav button.active{background:var(--ink-2);color:#fff;}
+  .nav button.active .sq{background:var(--accent);}
+  .sidebar-foot{margin-top:auto;padding:16px 20px 0 20px;border-top:1px solid #2a303b;font-size:12px;color:#6c7180;}
+  .sidebar-foot .email{color:#c3c6d1;display:block;margin-bottom:8px;word-break:break-all;}
+  .sidebar-foot button{background:none;border:none;color:#8b90a0;text-decoration:underline;padding:0;font-size:12px;}
+
+  .main{flex:1;padding:32px 40px 60px;max-width:1180px;}
+  .topbar{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:26px;flex-wrap:wrap;gap:14px;}
+  .topbar h1{font-size:26px;}
+  .topbar p{margin:6px 0 0;color:var(--muted);font-size:14px;}
+  .actions{display:flex;gap:10px;align-items:center;}
+  .search{border:1px solid var(--line);background:var(--surface);padding:9px 14px;border-radius:7px;font-size:14px;min-width:220px;}
+  .search:focus,.btn:focus,button:focus{outline:2px solid var(--info);outline-offset:1px;}
+
+  .manifest{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:28px;flex-wrap:wrap;}
+  .manifest .stat{flex:1;min-width:150px;padding:18px 22px;border-right:1px solid var(--line);}
+  .manifest .stat:last-child{border-right:none;}
+  .manifest .stat .num{font-family:'Archivo',sans-serif;font-weight:800;font-size:28px;line-height:1;}
+  .manifest .stat .lbl{color:var(--muted);font-size:13px;margin-top:6px;}
+  .manifest .stat.warn .num{color:var(--warning);}
+
+  .alert{background:var(--warning-bg);border:1px solid #e3bfaf;color:var(--warning);padding:12px 16px;border-radius:8px;font-size:14px;margin-bottom:22px;display:flex;gap:10px;align-items:center;}
+  .alert strong{color:var(--text);}
+  .ml-banner{background:var(--info-bg);border:1px solid #b9cddd;color:var(--info);padding:12px 16px;border-radius:8px;font-size:14px;margin-bottom:22px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+  .ml-banner button{white-space:nowrap;}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  .panel-head{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;}
+  .panel-head h3{font-size:15px;}
+
+  table{width:100%;border-collapse:collapse;font-size:14px;}
+  th{text-align:left;font-weight:500;color:var(--muted);font-size:12.5px;padding:12px 20px;border-bottom:1px solid var(--line);}
+  td{padding:13px 20px;border-bottom:1px solid #ececE4;vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  tr:hover td{background:#fafaf7;}
+
+  .pill{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12.5px;font-weight:600;}
+  .pill-ok{background:var(--success-bg);color:var(--success);}
+  .pill-warn{background:var(--warning-bg);color:var(--warning);}
+  .pill-info{background:var(--info-bg);color:var(--info);}
+
+  .row-actions{display:flex;gap:8px;}
+  .icon-btn{background:none;border:none;color:var(--muted);font-size:13px;padding:2px 4px;text-decoration:underline;}
+  .icon-btn:hover{color:var(--text);}
+  select.status-select{border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:13px;font-family:inherit;background:var(--surface);}
+  .empty{padding:40px 20px;text-align:center;color:var(--muted);font-size:14px;}
+  .view{display:none;}
+  .view.active{display:block;}
+
+  .modal-bg{position:fixed;inset:0;background:rgba(20,24,31,0.45);display:none;align-items:center;justify-content:center;z-index:50;}
+  .modal-bg.open{display:flex;}
+  .modal{background:var(--surface);border-radius:10px;width:420px;max-width:92vw;padding:24px;}
+  .modal h3{font-size:17px;margin-bottom:18px;}
+  .field-row{display:flex;gap:12px;}
+  .field-row .field{flex:1;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
+
+  @media(max-width:800px){
+    .app{flex-direction:column;}
+    .sidebar{width:100%;flex-direction:row;align-items:center;padding:14px 16px;overflow-x:auto;}
+    .brand{border:none;margin:0;padding:0 16px 0 0;}
+    .brand .tag{display:none;}
+    .nav{flex-direction:row;padding:0;}
+    .sidebar-foot{display:none;}
+    .main{padding:22px 18px 50px;}
+    .manifest .stat{min-width:50%;border-bottom:1px solid var(--line);}
+    table{font-size:13px;}
+    th,td{padding:10px 12px;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ---------- LOGIN ---------- -->
+<div class="login-screen" id="login-screen">
+  <div class="login-card">
+    <div class="mark"><span class="dot"></span>Galpão</div>
+    <p class="sub">estoque e pedidos, num lugar só</p>
+    <div class="login-error" id="login-error"></div>
+    <div class="field"><label>Email</label><input id="login-email" type="email" autocomplete="username"></div>
+    <div class="field"><label>Senha</label><input id="login-senha" type="password" autocomplete="current-password"></div>
+    <button class="btn btn-primary btn-block" id="btn-entrar">Entrar</button>
+    <div class="login-toggle" id="login-toggle-text">
+      Ainda não tem conta? <button id="btn-toggle-modo">Criar conta</button>
+    </div>
+  </div>
+</div>
+
+<!-- ---------- APP ---------- -->
+<div class="app" id="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="mark"><span class="dot"></span>Galpão</span>
+      <span class="tag">estoque e pedidos, num lugar só</span>
+    </div>
+    <nav class="nav">
+      <button class="nav-btn active" data-view="painel"><span class="sq"></span>Painel</button>
+      <button class="nav-btn" data-view="estoque"><span class="sq"></span>Estoque</button>
+      <button class="nav-btn" data-view="pedidos"><span class="sq"></span>Pedidos</button>
+    </nav>
+    <div class="sidebar-foot">
+      <span class="email" id="user-email"></span>
+      <button id="btn-sair">Sair da conta</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <section class="view active" id="view-painel">
+      <div class="topbar">
+        <div><h1>Painel</h1><p>Visão geral do seu estoque e pedidos</p></div>
+      </div>
+      <div id="ml-banner"></div>
+      <div id="low-stock-alert"></div>
+      <div class="manifest" id="stats"></div>
+      <div class="panel">
+        <div class="panel-head"><h3>Pedidos recentes</h3></div>
+        <div id="recent-orders"></div>
+      </div>
+    </section>
+
+    <section class="view" id="view-estoque">
+      <div class="topbar">
+        <div><h1>Estoque</h1><p>Seus produtos, preços e quantidades</p></div>
+        <div class="actions">
+          <input class="search" id="search-produtos" placeholder="Buscar por nome ou SKU">
+          <button class="btn btn-primary" id="btn-novo-produto">Novo produto</button>
+        </div>
+      </div>
+      <div class="panel">
+        <table>
+          <thead><tr><th>SKU</th><th>Produto</th><th>Categoria</th><th>Preço</th><th>Estoque</th><th>Status</th><th></th></tr></thead>
+          <tbody id="tbl-produtos"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="view" id="view-pedidos">
+      <div class="topbar">
+        <div><h1>Pedidos</h1><p>Acompanhe e atualize o status de cada venda</p></div>
+        <div class="actions">
+          <input class="search" id="search-pedidos" placeholder="Buscar por cliente ou código">
+          <button class="btn btn-primary" id="btn-novo-pedido">Novo pedido</button>
+        </div>
+      </div>
+      <div class="panel">
+        <table>
+          <thead><tr><th>Pedido</th><th>Cliente</th><th>Produto</th><th>Data</th><th>Total</th><th>Status</th><th></th></tr></thead>
+          <tbody id="tbl-pedidos"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="modal-bg" id="modal-produto">
+  <div class="modal">
+    <h3 id="modal-produto-title">Novo produto</h3>
+    <input type="hidden" id="produto-id">
+    <div class="field"><label>Nome do produto</label><input id="produto-nome"></div>
+    <div class="field-row">
+      <div class="field"><label>SKU</label><input id="produto-sku"></div>
+      <div class="field"><label>Categoria</label><input id="produto-categoria"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Preço (R$)</label><input id="produto-preco" type="number" min="0" step="0.01"></div>
+      <div class="field"><label>Estoque</label><input id="produto-estoque" type="number" min="0" step="1"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('modal-produto')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-salvar-produto">Salvar produto</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-pedido">
+  <div class="modal">
+    <h3>Novo pedido</h3>
+    <div class="field"><label>Cliente</label><input id="pedido-cliente"></div>
+    <div class="field"><label>Produto</label><select id="pedido-produto"></select></div>
+    <div class="field-row">
+      <div class="field"><label>Quantidade</label><input id="pedido-qtd" type="number" min="1" step="1" value="1"></div>
+      <div class="field"><label>Status</label>
+        <select id="pedido-status">
+          <option>Pendente</option><option>Enviado</option><option>Entregue</option><option>Cancelado</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('modal-pedido')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-salvar-pedido">Salvar pedido</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const LOW_STOCK = 5;
+let TOKEN = localStorage.getItem('galpao_token') || null;
+let USER_EMAIL = localStorage.getItem('galpao_email') || '';
+let produtos = [];
+let pedidos = [];
+let modoCadastro = false;
+
+/* ---------- API ---------- */
+async function api(path, options={}){
+  const headers = Object.assign({'Content-Type':'application/json'}, options.headers||{});
+  if(TOKEN) headers['Authorization'] = TOKEN;
+  const res = await fetch('/api'+path, Object.assign({}, options, {headers}));
+  if(res.status === 401){ logout(); throw new Error('Sessão expirada'); }
+  const json = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(json.erro || 'Erro na requisição');
+  return json;
+}
+
+/* ---------- LOGIN / CADASTRO ---------- */
+document.getElementById('btn-toggle-modo').addEventListener('click', ()=>{
+  modoCadastro = !modoCadastro;
+  document.getElementById('btn-entrar').textContent = modoCadastro ? 'Criar conta' : 'Entrar';
+  document.getElementById('login-toggle-text').innerHTML = modoCadastro
+    ? 'Já tem conta? <button id="btn-toggle-modo2">Entrar</button>'
+    : 'Ainda não tem conta? <button id="btn-toggle-modo2">Criar conta</button>';
+  document.getElementById('btn-toggle-modo2').addEventListener('click', ()=>document.getElementById('btn-toggle-modo').click());
+});
+
+document.getElementById('btn-entrar').addEventListener('click', async ()=>{
+  const email = document.getElementById('login-email').value.trim();
+  const senha = document.getElementById('login-senha').value;
+  const errBox = document.getElementById('login-error');
+  errBox.style.display='none';
+  if(!email || !senha){ errBox.textContent='Preencha email e senha.'; errBox.style.display='block'; return; }
+  try{
+    const data = await fetch('/api/'+(modoCadastro?'signup':'login'), {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email, senha})
+    }).then(async r=>{
+      const j = await r.json();
+      if(!r.ok) throw new Error(j.erro||'Erro ao entrar');
+      return j;
+    });
+    TOKEN = data.token; USER_EMAIL = data.email;
+    localStorage.setItem('galpao_token', TOKEN);
+    localStorage.setItem('galpao_email', USER_EMAIL);
+    startApp();
+  }catch(e){
+    errBox.textContent = e.message; errBox.style.display='block';
+  }
+});
+
+function logout(){
+  TOKEN = null;
+  localStorage.removeItem('galpao_token');
+  localStorage.removeItem('galpao_email');
+  document.getElementById('app').classList.remove('active');
+  document.getElementById('login-screen').style.display='flex';
+}
+document.getElementById('btn-sair').addEventListener('click', logout);
+
+/* ---------- FORMAT ---------- */
+function fmtMoney(v){ return (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+function fmtDate(iso){ if(!iso) return '—'; const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; }
+function produtoById(id){ return produtos.find(p=>p.id===id); }
+function stockStatus(qtd){
+  if(qtd===0) return {label:'Esgotado', cls:'pill-warn'};
+  if(qtd<LOW_STOCK) return {label:'Estoque baixo', cls:'pill-warn'};
+  return {label:'Disponível', cls:'pill-ok'};
+}
+function orderPillClass(status){
+  if(status==='Entregue') return 'pill-ok';
+  if(status==='Cancelado') return 'pill-warn';
+  if(status==='Enviado') return 'pill-info';
+  return 'pill-warn';
+}
+
+/* ---------- RENDER ---------- */
+function renderPainel(){
+  const totalProdutos = produtos.length;
+  const pendentes = pedidos.filter(p=>p.status==='Pendente').length;
+  const baixoEstoque = produtos.filter(p=>p.estoque<LOW_STOCK).length;
+  const faturamento = pedidos.filter(p=>p.status!=='Cancelado').reduce((sum,p)=>{
+    const prod = produtoById(p.produtoId);
+    return sum + (prod ? prod.preco*p.qtd : 0);
+  },0);
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="num">${totalProdutos}</div><div class="lbl">Produtos cadastrados</div></div>
+    <div class="stat ${pendentes>0?'warn':''}"><div class="num">${pendentes}</div><div class="lbl">Pedidos pendentes</div></div>
+    <div class="stat ${baixoEstoque>0?'warn':''}"><div class="num">${baixoEstoque}</div><div class="lbl">Itens com estoque baixo</div></div>
+    <div class="stat"><div class="num">${fmtMoney(faturamento)}</div><div class="lbl">Faturamento (pedidos ativos)</div></div>
+  `;
+  const alertBox = document.getElementById('low-stock-alert');
+  if(baixoEstoque>0){
+    const nomes = produtos.filter(p=>p.estoque<LOW_STOCK).map(p=>p.nome).join(', ');
+    alertBox.innerHTML = `<div class="alert"><strong>Atenção:</strong> ${nomes} com pouco ou nenhum estoque.</div>`;
+  } else alertBox.innerHTML='';
+
+  const recent = [...pedidos].sort((a,b)=>(b.data||'').localeCompare(a.data||'')).slice(0,5);
+  document.getElementById('recent-orders').innerHTML = recent.length ? `
+    <table><thead><tr><th>Pedido</th><th>Cliente</th><th>Produto</th><th>Data</th><th>Status</th></tr></thead>
+    <tbody>${recent.map(p=>{
+      const prod = produtoById(p.produtoId);
+      return `<tr><td class="mono">#${p.id}</td><td>${p.cliente}</td><td>${prod?prod.nome:'—'}</td><td>${fmtDate(p.data)}</td><td><span class="pill ${orderPillClass(p.status)}">${p.status}</span></td></tr>`;
+    }).join('')}</tbody></table>
+  ` : `<div class="empty">Nenhum pedido ainda.</div>`;
+}
+
+function renderEstoque(filter=''){
+  const f = filter.toLowerCase();
+  const list = produtos.filter(p=>p.nome.toLowerCase().includes(f) || (p.sku||'').toLowerCase().includes(f));
+  document.getElementById('tbl-produtos').innerHTML = list.length ? list.map(p=>{
+    const st = stockStatus(p.estoque);
+    return `<tr><td class="mono">${p.sku||''}</td><td>${p.nome}</td><td>${p.categoria||''}</td><td>${fmtMoney(p.preco)}</td><td>${p.estoque}</td>
+      <td><span class="pill ${st.cls}">${st.label}</span></td>
+      <td class="row-actions"><button class="icon-btn" onclick="editProduto('${p.id}')">editar</button><button class="icon-btn" onclick="deleteProduto('${p.id}')">excluir</button></td></tr>`;
+  }).join('') : `<tr><td colspan="7" class="empty">Nenhum produto encontrado.</td></tr>`;
+}
+
+function renderPedidos(filter=''){
+  const f = filter.toLowerCase();
+  const list = pedidos.filter(p=>p.cliente.toLowerCase().includes(f) || p.id.includes(f));
+  document.getElementById('tbl-pedidos').innerHTML = list.length ? [...list].sort((a,b)=>(b.data||'').localeCompare(a.data||'')).map(p=>{
+    const prod = produtoById(p.produtoId);
+    const total = prod ? prod.preco*p.qtd : 0;
+    return `<tr><td class="mono">#${p.id}</td><td>${p.cliente}</td><td>${prod?prod.nome:'—'} ${p.qtd>1?`× ${p.qtd}`:''}</td><td>${fmtDate(p.data)}</td><td>${fmtMoney(total)}</td>
+      <td><select class="status-select" onchange="updateStatus('${p.id}', this.value)">
+        ${['Pendente','Enviado','Entregue','Cancelado'].map(s=>`<option ${s===p.status?'selected':''}>${s}</option>`).join('')}
+      </select></td>
+      <td class="row-actions"><button class="icon-btn" onclick="deletePedido('${p.id}')">excluir</button></td></tr>`;
+  }).join('') : `<tr><td colspan="7" class="empty">Nenhum pedido encontrado.</td></tr>`;
+}
+
+async function renderMlBanner(){
+  try{
+    const status = await api('/ml/status');
+    const box = document.getElementById('ml-banner');
+    if(status.conectado){
+      box.innerHTML = `<div class="ml-banner">Sua conta está conectada ao Mercado Livre. <button class="btn" onclick="syncMl()">Sincronizar pedidos agora</button></div>`;
+    } else {
+      box.innerHTML = `<div class="ml-banner">Conecte sua conta do Mercado Livre para sincronizar pedidos automaticamente. <button class="btn btn-primary" onclick="connectMl()">Conectar Mercado Livre</button></div>`;
+    }
+  }catch(e){}
+}
+async function connectMl(){
+  try{
+    const r = await api('/ml/connect');
+    window.location.href = r.url;
+  }catch(e){ alert(e.message); }
+}
+async function syncMl(){
+  try{
+    const r = await api('/ml/sync', {method:'POST'});
+    alert(`Conectado como ${r.usuario_ml}. Pedidos encontrados no Mercado Livre: ${r.pedidos_encontrados}`);
+  }catch(e){ alert(e.message); }
+}
+
+async function loadAll(){
+  produtos = await api('/produtos');
+  pedidos = await api('/pedidos');
+  renderPainel();
+  renderEstoque(document.getElementById('search-produtos').value);
+  renderPedidos(document.getElementById('search-pedidos').value);
+  renderMlBanner();
+}
+
+/* ---------- PRODUTO ---------- */
+function openNovoProduto(){
+  document.getElementById('modal-produto-title').textContent = 'Novo produto';
+  ['produto-id','produto-nome','produto-sku','produto-categoria','produto-preco','produto-estoque'].forEach(id=>document.getElementById(id).value='');
+  openModal('modal-produto');
+}
+function editProduto(id){
+  const p = produtoById(id); if(!p) return;
+  document.getElementById('modal-produto-title').textContent = 'Editar produto';
+  document.getElementById('produto-id').value = p.id;
+  document.getElementById('produto-nome').value = p.nome;
+  document.getElementById('produto-sku').value = p.sku||'';
+  document.getElementById('produto-categoria').value = p.categoria||'';
+  document.getElementById('produto-preco').value = p.preco;
+  document.getElementById('produto-estoque').value = p.estoque;
+  openModal('modal-produto');
+}
+document.getElementById('btn-salvar-produto').addEventListener('click', async ()=>{
+  const id = document.getElementById('produto-id').value;
+  const nome = document.getElementById('produto-nome').value.trim();
+  const sku = document.getElementById('produto-sku').value.trim();
+  const categoria = document.getElementById('produto-categoria').value.trim();
+  const preco = parseFloat(document.getElementById('produto-preco').value)||0;
+  const estoque = parseInt(document.getElementById('produto-estoque').value)||0;
+  if(!nome || !sku){ alert('Preencha nome e SKU do produto.'); return; }
+  const body = {nome, sku, categoria, preco, estoque};
+  try{
+    if(id) await api('/produtos/'+id, {method:'PUT', body:JSON.stringify(body)});
+    else await api('/produtos', {method:'POST', body:JSON.stringify(body)});
+    closeModal('modal-produto');
+    await loadAll();
+  }catch(e){ alert(e.message); }
+});
+async function deleteProduto(id){
+  if(!confirm('Excluir este produto?')) return;
+  try{ await api('/produtos/'+id, {method:'DELETE'}); await loadAll(); }catch(e){ alert(e.message); }
+}
+
+/* ---------- PEDIDO ---------- */
+function openNovoPedido(){
+  const sel = document.getElementById('pedido-produto');
+  sel.innerHTML = produtos.map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');
+  document.getElementById('pedido-cliente').value = '';
+  document.getElementById('pedido-qtd').value = 1;
+  document.getElementById('pedido-status').value = 'Pendente';
+  openModal('modal-pedido');
+}
+document.getElementById('btn-salvar-pedido').addEventListener('click', async ()=>{
+  const cliente = document.getElementById('pedido-cliente').value.trim();
+  const produtoId = document.getElementById('pedido-produto').value;
+  const qtd = parseInt(document.getElementById('pedido-qtd').value)||1;
+  const status = document.getElementById('pedido-status').value;
+  if(!cliente || !produtoId){ alert('Preencha o cliente e escolha um produto.'); return; }
+  const today = new Date().toISOString().slice(0,10);
+  try{
+    await api('/pedidos', {method:'POST', body:JSON.stringify({cliente, produtoId, qtd, status, data:today})});
+    closeModal('modal-pedido');
+    await loadAll();
+  }catch(e){ alert(e.message); }
+});
+async function updateStatus(id, status){
+  try{ await api('/pedidos/'+id, {method:'PUT', body:JSON.stringify({status})}); await loadAll(); }catch(e){ alert(e.message); }
+}
+async function deletePedido(id){
+  if(!confirm('Excluir este pedido?')) return;
+  try{ await api('/pedidos/'+id, {method:'DELETE'}); await loadAll(); }catch(e){ alert(e.message); }
+}
+
+/* ---------- MODAL / NAV ---------- */
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.nav-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-'+btn.dataset.view).classList.add('active');
+  });
+});
+document.getElementById('btn-novo-produto').addEventListener('click', openNovoProduto);
+document.getElementById('btn-novo-pedido').addEventListener('click', openNovoPedido);
+document.getElementById('search-produtos').addEventListener('input', e=>renderEstoque(e.target.value));
+document.getElementById('search-pedidos').addEventListener('input', e=>renderPedidos(e.target.value));
+document.querySelectorAll('.modal-bg').forEach(m=>{
+  m.addEventListener('click', e=>{ if(e.target===m) m.classList.remove('open'); });
+});
+
+/* ---------- START ---------- */
+function startApp(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').classList.add('active');
+  document.getElementById('user-email').textContent = USER_EMAIL;
+  loadAll().catch(()=>{});
+}
+if(TOKEN) startApp();
+</script>
+</body>
+</html>
